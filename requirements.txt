@@ -3,3 +3,4 @@ redis==5.0.1
 httpx==0.25.2
 google-generativeai
 numpy
+sentence-transformers
