@@ -1,18 +1,35 @@
-from .session import SessionManager
-from .gemini import ask_gemini
+from .llm_router import LLMRouter
+from .vector_memory import VectorMemory
+from .quota import QuotaManager
+from .tool_engine import ToolEngine
 
-session_manager = SessionManager()
 
+async def run_agent(user_id, text):
 
-async def run_agent(user_id: str, message: str) -> str:
-    history = session_manager.get_history(user_id)
+    if not QuotaManager.check(user_id):
+        return "今日额度已用完"
 
-    history.append({"role": "user", "content": message})
+    tool_result = await ToolEngine.maybe_use_tool(text)
+    if tool_result:
+        return tool_result
 
-    response = await ask_gemini(history)
+    memories = VectorMemory.search(user_id, text)
 
-    history.append({"role": "assistant", "content": response})
+    messages = []
 
-    session_manager.save_history(user_id, history)
+    if memories:
+        messages.append({
+            "role": "system",
+            "content": "以下是相关记忆：" + "\n".join(memories)
+        })
 
-    return response
+    messages.append({
+        "role": "user",
+        "content": text
+    })
+
+    reply = await LLMRouter.chat(messages)
+
+    VectorMemory.store(user_id, text)
+
+    return reply
