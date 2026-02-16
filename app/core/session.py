@@ -1,32 +1,22 @@
-import   进口 os
-import redis   进口复述,
-import json   进口json
-from typing import List, Dict
-
-REDIS_URL = os.getenv("REDIS_URL")
-
-if not REDIS_URL:
-    raise RuntimeError("REDIS_URL not set")
-
-r = redis.from_url(REDIS_URL, decode_responses=True)
+import os
+import json
+import redis
 
 
 class SessionManager:
     def __init__(self):
-        self.expire_seconds = 60 * 60 * 24  # 24小时
+        redis_url = os.getenv("REDIS_URL")
 
-    def _key(self, user_id: str) -> str:
-        return f"session:{user_id}"
+        if not redis_url:
+            raise RuntimeError("REDIS_URL not set")
 
-    def get_history(self, user_id: str) -> List[Dict]:
-        data = r.get(self._key(user_id))
-        if not data:
-            return []
-        return json.loads(data)
+        self.client = redis.from_url(redis_url, decode_responses=True)
 
-    def save_history(self, user_id: str, history: List[Dict]):
-        r.set(
-            self._key(user_id),
-            json.dumps(history),
-            ex=self.expire_seconds
-        )
+    def get_history(self, user_id: str):
+        data = self.client.get(user_id)
+        if data:
+            return json.loads(data)
+        return []
+
+    def save_history(self, user_id: str, history):
+        self.client.set(user_id, json.dumps(history), ex=86400)
