@@ -1,24 +1,18 @@
-from   从 .session import   进口 SessionManager
+from .session import SessionManager
 from .gemini import ask_gemini
 
 session_manager = SessionManager()
 
 
-async def run_agent(user_id: str, user_input: str) -> str:
+async def run_agent(user_id: str, message: str) -> str:
     history = session_manager.get_history(user_id)
 
-    history.append({
-        "role": "user",
-        "parts": [user_input]
-    })
+    history.append({"role": "user", "content": message})
 
-    reply = await ask_gemini(history)
+    response = await ask_gemini(history)
 
-    history.append({
-        "role": "model",
-        "parts": [reply]
-    })
+    history.append({"role": "assistant", "content": response})
 
     session_manager.save_history(user_id, history)
 
-    return reply   返回应答
+    return response
